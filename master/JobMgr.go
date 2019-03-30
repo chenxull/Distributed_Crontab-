@@ -3,7 +3,6 @@ package master
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/chenxull/Crontab/crontab/master/Error"
 	"github.com/chenxull/Crontab/crontab/master/common"
 	"go.etcd.io/etcd/clientv3"
@@ -64,7 +63,7 @@ func (jobMgr *JobMgr) Savejob(job *common.Job) (oldjob *common.Job, err error) {
 		putResp   *clientv3.PutResponse
 		oldJobObj common.Job
 	)
-	jobKey = common.JOB_SAVE_DIR + job.Name
+	jobKey = "/cron/jobs/" + jobKey
 
 	//任务信息,以 json 格式存储在 etcd
 	if jobValue, err = json.Marshal(job); err != nil {
@@ -78,7 +77,6 @@ func (jobMgr *JobMgr) Savejob(job *common.Job) (oldjob *common.Job, err error) {
 		return
 	}
 	//如果是更新操作，返回旧值
-
 	if putResp.PrevKv != nil {
 		if err = json.Unmarshal(putResp.PrevKv.Value, &oldJobObj); err != nil {
 			err = nil
@@ -87,35 +85,4 @@ func (jobMgr *JobMgr) Savejob(job *common.Job) (oldjob *common.Job, err error) {
 		oldjob = &oldJobObj
 	}
 	return
-}
-
-//删除任务
-func (jobMgr *JobMgr) DeleteJob(name string) (oldJob *common.Job, err error) {
-	var (
-		jobKey    string
-		delResp   *clientv3.DeleteResponse
-		oldJobObj common.Job
-	)
-
-	jobKey = common.JOB_SAVE_DIR + name
-
-	//从 etcd 中删除
-	//TODO BugToFix can't delete the job from the etcd
-	if delResp, err = G_jonMgr.kv.Delete(context.TODO(), jobKey, clientv3.WithPrevKV()); err != nil {
-		Error.CheckErr(err, "Delete job from etcd error ")
-		return
-	}
-	//返回被删除的信息
-	if len(delResp.PrevKvs) != 0 {
-		if err = json.Unmarshal(delResp.PrevKvs[0].Value, &oldJobObj); err != nil {
-			err = nil
-			return
-		}
-		oldJob = &oldJobObj
-	} else {
-		fmt.Println("prevkvs is nil")
-	}
-
-	return
-
 }

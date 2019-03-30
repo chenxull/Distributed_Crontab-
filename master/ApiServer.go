@@ -17,20 +17,19 @@ type ApiServer struct {
 }
 
 //保存任务接口
-//POST job= {"name":"job","command":"echo hello","cronExpr":"*/5 * * * * *"}
+//POST job= {"name":"job",“command“：“echo hello”,"cronExpr":"xxxxx"}
 func handleJobServe(w http.ResponseWriter, r *http.Request) {
 	var (
 		err     error
 		postJob string
 		job     common.Job
 		oldJob  *common.Job
-		bytes   []byte
 	)
 	//任务保存到 etcd 中
 	//1.解析表单
 	err = r.ParseForm()
 	if err != nil {
-		Error.CheckErr(err, "HandleJobServe:Parse Form error")
+		Error.CheckErr(err, "Parse Forn error")
 		return
 	}
 
@@ -48,58 +47,8 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 		Error.CheckErr(err, "ApiServer: Save the job to etcd error ")
 		return
 	}
-	fmt.Println(oldJob)
+
 	//5.返回正常应答
-	bytes, err = common.BuildResponse(0, "success", oldJob)
-	if err == nil {
-
-		w.Write(bytes) //将数据发送回去
-	} else {
-		Error.CheckErr(err, "Response message to web error ")
-		Errbyte, _ := common.BuildResponse(1, err.Error(), nil)
-		w.Write(Errbyte)
-	}
-
-}
-
-//删除任务接口 POST /job/delete name = job1
-func handleJobDelete(w http.ResponseWriter, r *http.Request) {
-	var (
-		err    error
-		name   string
-		oldJob *common.Job
-		bytes  []byte
-	)
-	//1.解析表单
-	if err = r.ParseForm(); err != nil {
-		Error.CheckErr(err, "HandleJobDelete:Parse Form error")
-		return
-	}
-
-	//2.删除任务名
-	name = r.PostForm.Get("name")
-
-	//3.删除任务
-	if oldJob, err = G_jonMgr.DeleteJob(name); err != nil {
-		Error.CheckErr(err, "DeleteJob from etcd error")
-		return
-	}
-
-	//4.返回正常应答
-	bytes, err = common.BuildResponse(0, "success", oldJob)
-	if err == nil {
-
-		w.Write(bytes) //将数据发送回去
-	} else {
-		Error.CheckErr(err, "Response message to web error ")
-		Errbyte, _ := common.BuildResponse(1, err.Error(), nil)
-		w.Write(Errbyte)
-	}
-	return
-}
-
-//显示 etcd 中的任务
-func handleJoblist(w http.ResponseWriter, r *http.Request) {
 
 }
 
@@ -119,8 +68,6 @@ func InitApiServer() (err error) {
 	//配置路由
 	mux = http.NewServeMux()
 	mux.HandleFunc("/job/save", handleJobServe) //注册服务，当web 端请求对应的路径时，就会调用对应函数
-	mux.HandleFunc("/job/delete", handleJobDelete)
-	mux.HandleFunc("job/list", handleJobList)
 
 	//启动监听
 	fmt.Println(G_config.ApiPort)
