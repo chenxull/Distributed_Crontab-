@@ -6,6 +6,7 @@ import (
 	"github.com/chenxull/Crontab/crontab/master"
 	"github.com/chenxull/Crontab/crontab/master/Error"
 	"runtime"
+	"time"
 )
 
 var (
@@ -46,6 +47,9 @@ func main() {
 		return
 	}
 
+	for {
+		time.Sleep(1 * time.Second)
+	}
 	fmt.Println("start successful")
 
 }
