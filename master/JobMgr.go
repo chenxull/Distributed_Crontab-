@@ -103,7 +103,6 @@ func (jobMgr *JobMgr) DeleteJob(name string) (oldJob *common.Job, err error) {
 	fmt.Println(jobKey)
 
 	//从 etcd 中删除
-	//TODO BugToFix can't delete the job from the etcd
 	if delResp, err = GlobalJonMgr.kv.Delete(context.TODO(), jobKey, clientv3.WithPrevKV()); err != nil {
 		Error.CheckErr(err, "Delete job from etcd error ")
 		return
