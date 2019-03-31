@@ -1,6 +1,8 @@
 package common
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 //定时任务
 type Job struct {
@@ -11,20 +13,21 @@ type Job struct {
 
 //http接口应答
 type Response struct {
-	Errno error       `json:"errno"`
+	Errno int         `json:"errno"`
 	Msg   string      `json:"msg"`
-	data  interface{} `json:"data"`
+	Data  interface{} `json:"data"`
 }
 
 //http 应答方法
-func BuildResponse(errno error, msg string, data interface{}) (resp []byte, err error) {
+func BuildResponse(errno int, msg string, data interface{}) (resp []byte, err error) {
 	//1.定义一个Response
 	var (
 		response Response
 	)
 	response.Errno = errno
 	response.Msg = msg
-	response.data = data
+	response.Data = data
+	//fmt.Println(response.Data)
 
 	//2.序列化为 json
 	resp, err = json.Marshal(response)
