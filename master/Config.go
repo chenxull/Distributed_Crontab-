@@ -3,26 +3,28 @@ package master
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chenxull/Crontab/crontab/master/Error"
 	"io/ioutil"
+
+	"github.com/chenxull/Crontab/crontab/master/Error"
 )
 
-//配置
+//Config 从 master.json 文件中传入的配置信息
 type Config struct {
 	//通过标签的方式，使用的 json 的反序列化，和 json 文件中数据对应起来。解析到对应的字段中
-	ApiPort         int      `json:"apiPort"`
-	ApiReadTimeout  int      `json:"apiReadTimeout"`
-	ApiWriteTimeout int      `json:"apiWriteTimeout"`
+	APIPort         int      `json:"apiPort"`
+	APIReadTimeout  int      `json:"apiReadTimeout"`
+	APIWriteTimeout int      `json:"apiWriteTimeout"`
 	EtcdEndpoints   []string `json:"etcdEndpoints"`
 	EtcdDialTimeout int      `json:"etcdDialTimeout"`
+	Webroot         string   `json:"webroot"`
 }
 
 //单例，其他模块可以直接访问到
 var (
-	G_config *Config
+	GlobalConfig *Config
 )
 
-// 加载配置
+//InitConfig 加载配置
 func InitConfig(filename string) (err error) {
 	var (
 		content []byte
@@ -39,7 +41,7 @@ func InitConfig(filename string) (err error) {
 		Error.CheckErr(err, "Parse the content to Conf error")
 		return
 	}
-	G_config = &Conf
+	GlobalConfig = &Conf
 
 	fmt.Println(Conf)
 

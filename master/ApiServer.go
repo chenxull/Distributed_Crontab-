@@ -3,12 +3,13 @@ package master
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chenxull/Crontab/crontab/master/Error"
-	"github.com/chenxull/Crontab/crontab/master/common"
 	"net"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/chenxull/Crontab/crontab/master/Error"
+	"github.com/chenxull/Crontab/crontab/master/common"
 )
 
 //ApiServer 任务的 http 接口
@@ -36,6 +37,7 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 
 	//2.取表单中的 job 字段
 	postJob = r.PostForm.Get("job")
+	fmt.Print("DEBUG::", postJob)
 
 	//3.反序列化 job
 	if err = json.Unmarshal([]byte(postJob), &job); err != nil {
@@ -44,7 +46,7 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//4.保存到 etcd
-	if oldJob, err = G_jonMgr.Savejob(&job); err != nil {
+	if oldJob, err = GlobalJonMgr.Savejob(&job); err != nil {
 		Error.CheckErr(err, "ApiServer: Save the job to etcd error ")
 		return
 	}
@@ -65,10 +67,10 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 //删除任务接口 POST /job/delete name = job1
 func handleJobDelete(w http.ResponseWriter, r *http.Request) {
 	var (
-		err    error
-		name   string
-		oldJob *common.Job
-		bytes  []byte
+		err        error
+		deletename string
+		oldJob     *common.Job
+		bytes      []byte
 	)
 	//1.解析表单
 	if err = r.ParseForm(); err != nil {
@@ -76,11 +78,11 @@ func handleJobDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//2.删除任务名
-	name = r.PostForm.Get("name")
-
+	//2.删除任务名 TODO 无法获取文件名，等待修复
+	deletename = r.PostForm.Get("name")
+	fmt.Println("DEBUG::", deletename)
 	//3.删除任务
-	if oldJob, err = G_jonMgr.DeleteJob(name); err != nil {
+	if oldJob, err = GlobalJonMgr.DeleteJob(deletename); err != nil {
 		Error.CheckErr(err, "DeleteJob from etcd error")
 		return
 	}
@@ -95,48 +97,102 @@ func handleJobDelete(w http.ResponseWriter, r *http.Request) {
 		Errbyte, _ := common.BuildResponse(1, err.Error(), nil)
 		w.Write(Errbyte)
 	}
-	return
 }
 
 //显示 etcd 中的任务
-func handleJoblist(w http.ResponseWriter, r *http.Request) {
+func handleJobList(w http.ResponseWriter, r *http.Request) {
+	var (
+		err     error
+		jobList []*common.Job
+	)
 
+	//1.解析表单
+	if err = r.ParseForm(); err != nil {
+		Error.CheckErr(err, "HandleJobList: Parse Form error")
+		return
+	}
+
+	//获取任务列表
+	if jobList, err = GlobalJonMgr.ListJobs(); err != nil {
+		Error.CheckErr(err, "Get the jobs list error")
+		return
+	}
+
+	//返回数据
+	if bytes, err := common.BuildResponse(0, "success", jobList); err == nil {
+		w.Write(bytes)
+	}
+}
+
+func handleJobKill(w http.ResponseWriter, r *http.Request) {
+	var (
+		err error
+	)
+
+	if err = r.ParseForm(); err != nil {
+		Error.CheckErr(err, "HandleJobKill Parse Form error")
+		return
+	}
+	//杀死任务
+	killName := r.PostForm.Get("name")
+
+	if err = GlobalJonMgr.KillJob(killName); err != nil {
+		Error.CheckErr(err, "Kill job error ")
+		return
+	}
+
+	bytes, err := common.BuildResponse(0, "success", nil)
+	if err == nil {
+		w.Write(bytes)
+	} else {
+		Error.CheckErr(err, "BuildRespons error")
+		w.Write(bytes)
+	}
 }
 
 var (
-	//单例对象，供其他包访问这个变量
-	G_apiServer *ApiServer
+	//GlobalAPIServer 单例对象，供其他包访问这个变量
+	GlobalAPIServer *ApiServer
 )
 
+//InitApiServer 初始化后端服务器
 func InitApiServer() (err error) {
 
 	var (
-		mux        *http.ServeMux
-		listener   net.Listener
-		httpServer *http.Server
+		mux           *http.ServeMux
+		listener      net.Listener
+		httpServer    *http.Server
+		staticDir     http.Dir     //静态文件目录
+		staticHandler http.Handler // 静态文件处理
 	)
 
 	//配置路由
 	mux = http.NewServeMux()
 	mux.HandleFunc("/job/save", handleJobServe) //注册服务，当web 端请求对应的路径时，就会调用对应函数
 	mux.HandleFunc("/job/delete", handleJobDelete)
-	mux.HandleFunc("job/list", handleJobList)
+	mux.HandleFunc("/job/list", handleJobList)
+	mux.HandleFunc("/job/kill", handleJobKill)
+
+	//静态文件目录
+	staticDir = http.Dir(GlobalConfig.Webroot)
+	staticHandler = http.FileServer(staticDir)
+	mux.Handle("/", http.StripPrefix("/", staticHandler)) // /index.html/  --> ./webroot/index.html
 
 	//启动监听
-	fmt.Println(G_config.ApiPort)
-	if listener, err = net.Listen("tcp", ":"+strconv.Itoa(G_config.ApiPort)); err != nil {
+	fmt.Println(GlobalConfig.APIPort)
+	if listener, err = net.Listen("tcp", ":"+strconv.Itoa(GlobalConfig.APIPort)); err != nil {
 		Error.CheckErr(err, "start Listener service error  ")
 		return
 	}
 
 	//创建服务器
 	httpServer = &http.Server{
-		ReadTimeout:  time.Duration(G_config.ApiReadTimeout) * time.Millisecond,
-		WriteTimeout: time.Duration(G_config.ApiWriteTimeout) * time.Millisecond,
+		ReadTimeout:  time.Duration(GlobalConfig.APIReadTimeout) * time.Millisecond,
+		WriteTimeout: time.Duration(GlobalConfig.APIWriteTimeout) * time.Millisecond,
 		Handler:      mux,
 	}
 	//配置单例
-	G_apiServer = &ApiServer{
+	GlobalAPIServer = &ApiServer{
 		httpServer: httpServer,
 	}
 	//启动服务 TODO 没有进行错误处理
