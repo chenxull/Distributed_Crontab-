@@ -37,6 +37,22 @@ type JobSchedulePlan struct {
 	NextTime time.Time            //下次执行的时间
 }
 
+//JobExecuteInfo    任务执行状态
+type JobExecuteInfo struct {
+	Job      *Job
+	PlanTime time.Time //计划执行时间
+	RealTime time.Time // 实际执行时间
+}
+
+//JobExecuteResult 任务执行结构
+type JobExecuteResult struct {
+	ExecuteInfo *JobExecuteInfo //任务执行状态
+	OutPut      []byte          //脚本输出
+	Err         error
+	StartTime   time.Time
+	EndTime     time.Time
+}
+
 //BuildResponse 构建 http 应答方法
 func BuildResponse(errno int, msg string, data interface{}) (resp []byte, err error) {
 	//1.定义一个Response
@@ -78,4 +94,33 @@ func BuildJobEvent(eventype int, job *Job) (jobEvent *JobEvent) {
 		EventType: eventype,
 		Job:       job,
 	}
+}
+
+//BuildSchedulePlan 构造任务调度计划，即定时任务下一次什么时候执行
+func BuildSchedulePlan(job *Job) (jobSchedulePlan *JobSchedulePlan, err error) {
+
+	//解析JOB中的 cron 表达式
+	expr, err := cronexpr.Parse(job.CronExpr)
+	if err != nil {
+		Error.CheckErr(err, "Parse cronexpr error")
+		return
+	}
+
+	//构造任务调度计划
+	jobSchedulePlan = &JobSchedulePlan{
+		Job:      job,
+		Expr:     expr,
+		NextTime: expr.Next(time.Now()),
+	}
+	return
+}
+
+//BuildExecuteInfo 构造任务执行状态信息，
+func BuildExecuteInfo(jobSchedulePlan *JobSchedulePlan) (jobExecuteInfo *JobExecuteInfo) {
+	jobExecuteInfo = &JobExecuteInfo{
+		Job:      jobSchedulePlan.Job,
+		PlanTime: jobSchedulePlan.NextTime,
+		RealTime: time.Now(),
+	}
+	return
 }

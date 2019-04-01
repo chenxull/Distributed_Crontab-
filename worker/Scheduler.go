@@ -6,13 +6,14 @@ import (
 
 	"github.com/chenxull/Crontab/crontab/common"
 	"github.com/chenxull/Crontab/crontab/master/Error"
-	"github.com/gorhill/cronexpr"
 )
 
 //Scheduler 任务调度结构体
 type Scheduler struct {
-	jobEventChan chan *common.JobEvent
-	jobPlanTable map[string]*common.JobSchedulePlan //任务调度计划表
+	jobEventChan      chan *common.JobEvent
+	jobPlanTable      map[string]*common.JobSchedulePlan //任务调度计划表
+	jobExecutingTable map[string]*common.JobExecuteInfo  //任务执行信息表
+	jobResultChan     chan *common.JobExecuteResult      //任务结果队列
 }
 
 var (
@@ -20,7 +21,7 @@ var (
 	GlobalScheduel *Scheduler
 )
 
-//处理事件
+//处理任务事件
 func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 	var (
 		jobSchedulePlan *common.JobSchedulePlan
@@ -30,7 +31,7 @@ func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 
 	switch jobEvent.EventType {
 	case common.JOB_EVENT_SAVE: //保存任务
-		if jobSchedulePlan, err = BuildSchedulePlan(jobEvent.Job); err != nil {
+		if jobSchedulePlan, err = common.BuildSchedulePlan(jobEvent.Job); err != nil {
 			Error.CheckErr(err, "BuildSchedulePlan error")
 			return
 		}
@@ -43,6 +44,41 @@ func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 		}
 
 	}
+}
+
+//处理任务的结果
+func (scheduler *Scheduler) handleJobResutl(jobResult *common.JobExecuteResult) {
+
+	//1.删除jobExecutingTabl中的任务状态
+	delete(scheduler.jobExecutingTable, jobResult.ExecuteInfo.Job.Name)
+	fmt.Println("任务执行完成", jobResult.ExecuteInfo.Job.Name, string(jobResult.OutPut), jobResult.Err)
+}
+
+//TryStartJob 尝试执行任务
+func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
+	var (
+		jobExecuteInfo *common.JobExecuteInfo //单个任务执行的状态
+		jobExisted     bool
+	)
+	//调度和执行不同
+	//执行的时间可能会很长，比如说任务1分钟会调度60次，但是只能执行1次，这个时候就需要任务去重
+	//判断需要执行的任务是否正在执行，如果是，直接跳过
+	if jobExecuteInfo, jobExisted = scheduler.jobExecutingTable[jobPlan.Job.Name]; jobExisted {
+		fmt.Println("当前任务正在执行，跳过此次执行", jobExecuteInfo.Job.Name)
+		return
+	}
+
+	//构建执行状态
+	jobExecuteInfo = common.BuildExecuteInfo(jobPlan)
+
+	//保存执行状态到 任务执行状态表中
+	scheduler.jobExecutingTable[jobPlan.Job.Name] = jobExecuteInfo
+
+	//TODO:执行任务
+	fmt.Println("执行任务:", jobExecuteInfo.Job.Name, jobExecuteInfo.PlanTime, jobExecuteInfo.RealTime)
+	GlobalExecutor.ExecuteJob(jobExecuteInfo)
+
+	//TODO 删除执行结束的任务。
 }
 
 //TrySchedule 重新计算任务调度状态并执行到期任务   ,计算休眠时间
@@ -66,7 +102,7 @@ func (scheduler *Scheduler) TrySchedule() (scheduleAfter time.Duration) {
 	for _, jobPlan = range scheduler.jobPlanTable {
 		if jobPlan.NextTime.Before(now) || jobPlan.NextTime.Equal(now) {
 			//TODO：2.尝试执行任务
-			fmt.Println("执行任务：", jobPlan.Job.Name)
+			scheduler.TryStartJob(jobPlan)
 			//更新下次执行的时间
 			jobPlan.NextTime = jobPlan.Expr.Next(now)
 		}
@@ -89,6 +125,7 @@ func (scheduler *Scheduler) scheduleLoop() {
 		jobEvent      *common.JobEvent
 		scheduleAfter time.Duration
 		scheduleTimer *time.Timer
+		jobResult     *common.JobExecuteResult
 	)
 
 	//初始化睡眠时间，第一次执行时为1秒
@@ -102,6 +139,8 @@ func (scheduler *Scheduler) scheduleLoop() {
 			//对内存中维护的任务列表做增删改查
 			scheduler.handleJobEvent(jobEvent)
 		case <-scheduleTimer.C: //TODO: 最近的任务到期了，在没到期这个 for 循环是阻塞的吗?
+		case jobResult = <-scheduler.jobResultChan: //监听任务结果时间
+			scheduler.handleJobResutl(jobResult)
 		}
 		//调度一次任务
 		scheduleAfter = scheduler.TrySchedule()
@@ -120,8 +159,10 @@ func (scheduler *Scheduler) PushJobEvent(job *common.JobEvent) {
 func InitScheduel() (err error) {
 
 	GlobalScheduel = &Scheduler{
-		jobEventChan: make(chan *common.JobEvent, 100),
-		jobPlanTable: make(map[string]*common.JobSchedulePlan, 100),
+		jobEventChan:      make(chan *common.JobEvent, 100),
+		jobPlanTable:      make(map[string]*common.JobSchedulePlan, 100),
+		jobExecutingTable: make(map[string]*common.JobExecuteInfo),
+		jobResultChan:     make(chan *common.JobExecuteResult, 1000),
 	}
 
 	/*
@@ -133,21 +174,7 @@ func InitScheduel() (err error) {
 	return
 }
 
-//BuildSchedulePlan 构造任务调度计划，即定时任务下一次什么时候执行
-func BuildSchedulePlan(job *common.Job) (jobSchedulePlan *common.JobSchedulePlan, err error) {
-
-	//解析JOB中的 cron 表达式
-	expr, err := cronexpr.Parse(job.CronExpr)
-	if err != nil {
-		Error.CheckErr(err, "Parse cronexpr error")
-		return
-	}
-
-	//构造任务调度计划
-	jobSchedulePlan = &common.JobSchedulePlan{
-		Job:      job,
-		Expr:     expr,
-		NextTime: expr.Next(time.Now()),
-	}
-	return
+//PostJobResult 获取任务执行结果
+func (scheduler *Scheduler) PostJobResult(jobResult *common.JobExecuteResult) {
+	scheduler.jobResultChan <- jobResult
 }

@@ -22,7 +22,7 @@ type JobMgr struct {
 
 var (
 	//单例
-	GlobalJonMgr *JobMgr
+	GlobalJobMgr *JobMgr
 )
 
 //监听变化
@@ -76,9 +76,8 @@ func (jobMgr *JobMgr) watchJobs() (err error) {
 						continue
 					}
 					//构建一个更新Event
-					fmt.Println("DUBG::保存事件", jobEvent.Job.Name)
 					jobEvent = common.BuildJobEvent(common.JOB_EVENT_SAVE, job)
-
+					fmt.Println("DUBG::保存事件", jobEvent.Job.Name)
 				case mvccpb.DELETE: //任务删除事件
 					//推一个删除事件给Scheduler  Delete /cron/jobs/jobName
 					//得到将要被删除的任务名
@@ -126,13 +125,21 @@ func InitJobMgr() (err error) {
 	lease = clientv3.Lease(client)
 	watcher = clientv3.NewWatcher(client)
 	//配置 单例
-	GlobalJonMgr = &JobMgr{
+	GlobalJobMgr = &JobMgr{
 		client:  client,
 		kv:      kv,
 		lease:   lease,
 		watcher: watcher,
 	}
 
-	GlobalJonMgr.watchJobs()
+	GlobalJobMgr.watchJobs()
 	return
 }
+
+//CreateJobLock 创建锁
+func (jobMgr *JobMgr) CreateJobLock(jobname string) (jobLock *JobLock) {
+	//返回锁
+	jobLock = InitJobLock(jobname, jobMgr.kv, jobMgr.lease)
+	return
+}
+

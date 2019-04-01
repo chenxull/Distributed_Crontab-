@@ -42,3 +42,19 @@ mater节点和 worker 节点之间的交互都是通过 etcd 来实现的。mste
 
 - [x] 删除 job 功能存在问题，经过测试无法获取传入的 job name。
 - [x] worker节点和 master 节点各个功能正常，但是无法直接通过命令行的形式，对 etcd 服务器进行操作。put 和 get 任务都没用，put 任务后，worker 节点能监听到插入信息，但是会报错，插入不成功。  原因：插入目录写错了，写成了`/crob/jobs/`应该为`ETCDCTL_API=3 ./etcdctl watch --prefix "/cron/jobs/"` 缺少了参数
+- [x] 运行worker.go的时候，在释放锁的时候出现问题，出现以下错误:
+
+```
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x1530acb]
+
+goroutine 10 [running]:
+github.com/chenxull/Crontab/crontab/worker.(*JobLock).Unlock(0xc0000fff80)
+	/Users/chenxu/code/mygo/src/github.com/chenxull/Crontab/crontab/worker/JobLock.go:123 +0x3b
+github.com/chenxull/Crontab/crontab/worker.(*Executor).ExecuteJob.func1(0xc0000884c0)
+	/Users/chenxu/code/mygo/src/github.com/chenxull/Crontab/crontab/worker/Executor.go:66 +0x35f
+created by github.com/chenxull/Crontab/crontab/worker.(*Executor).ExecuteJob
+	/Users/chenxu/code/mygo/src/github.com/chenxull/Crontab/crontab/worker/Executor.go:24 +0x3f
+exit status 2
+```
+问题原因：代码逻辑错误，在`JobLock.go`文件中，释放锁逻辑判断错误，应该为当有锁的时候才释放锁，我写成没有锁的时候释放锁。所有才会有空指针错误。
