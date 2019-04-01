@@ -25,7 +25,7 @@ var (
 	GlobalJobMgr *JobMgr
 )
 
-//监听变化
+//监听/cron/jobs/中任务的变化
 func (jobMgr *JobMgr) watchJobs() (err error) {
 	var (
 		job                *common.Job
@@ -98,6 +98,37 @@ func (jobMgr *JobMgr) watchJobs() (err error) {
 	return
 }
 
+//监听强杀任务
+func (jobMgr *JobMgr) watchKiller() {
+	//监听/cron/killer/目录
+	//从最新版本开始监听
+	go func() {
+
+		//监听/cron/killer/目录的后续变化
+		watchChan := jobMgr.watcher.Watch(context.TODO(), common.JOB_KILLER_DIR, clientv3.WithPrefix())
+
+		//处理监听事件
+		for watchResp := range watchChan {
+			for _, watchEvent := range watchResp.Events {
+				switch watchEvent.Type {
+				case mvccpb.PUT: //杀死任务事件
+					//提取任务名
+					killJobName := common.ExtractKillerName(string(watchEvent.Kv.Key))
+					job := &common.Job{Name: killJobName}
+					killJobEvent := common.BuildJobEvent(common.JOB_EVENT_KILL, job)
+
+					//推送强杀事件给Scheduler
+					fmt.Println("DEBUG::强杀事件", killJobEvent.Job.Name)
+					GlobalScheduel.PushJobEvent(killJobEvent)
+				case mvccpb.DELETE: //killer 标记过期，被自动删除
+
+				}
+			}
+		}
+
+	}()
+}
+
 //InitJobMgr 初始化worker的任务管理器
 func InitJobMgr() (err error) {
 
@@ -132,7 +163,11 @@ func InitJobMgr() (err error) {
 		watcher: watcher,
 	}
 
+	//监听任务的变化：执行，删除
 	GlobalJobMgr.watchJobs()
+
+	//监听任务的强杀
+	GlobalJobMgr.watchKiller()
 	return
 }
 
@@ -142,4 +177,3 @@ func (jobMgr *JobMgr) CreateJobLock(jobname string) (jobLock *JobLock) {
 	jobLock = InitJobLock(jobname, jobMgr.kv, jobMgr.lease)
 	return
 }
-

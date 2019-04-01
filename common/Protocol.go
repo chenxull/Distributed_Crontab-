@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"time"
@@ -39,9 +40,11 @@ type JobSchedulePlan struct {
 
 //JobExecuteInfo    任务执行状态
 type JobExecuteInfo struct {
-	Job      *Job
-	PlanTime time.Time //计划执行时间
-	RealTime time.Time // 实际执行时间
+	Job        *Job
+	PlanTime   time.Time          //计划执行时间
+	RealTime   time.Time          // 实际执行时间
+	CancelCtx  context.Context    //任务 command 的 context
+	CancelFunc context.CancelFunc //用于取消 command执行 的函数
 }
 
 //JobExecuteResult 任务执行结构
@@ -88,6 +91,11 @@ func ExtractJobName(jobKey string) string {
 	return strings.TrimPrefix(jobKey, JOB_SAVE_DIR)
 }
 
+//ExtractKillerName 从 etcd 的 key 中提取任务名
+func ExtractKillerName(killerKey string) string {
+	return strings.TrimPrefix(killerKey, JOB_KILLER_DIR)
+}
+
 // BuildJobEvent 任务变化事件的构造:  更新事件和 删除事件:
 func BuildJobEvent(eventype int, job *Job) (jobEvent *JobEvent) {
 	return &JobEvent{
@@ -122,5 +130,8 @@ func BuildExecuteInfo(jobSchedulePlan *JobSchedulePlan) (jobExecuteInfo *JobExec
 		PlanTime: jobSchedulePlan.NextTime,
 		RealTime: time.Now(),
 	}
+
+	//使得 任务执行信息可控，通过可取消的上下文来实现
+	jobExecuteInfo.CancelCtx, jobExecuteInfo.CancelFunc = context.WithCancel(context.TODO())
 	return
 }

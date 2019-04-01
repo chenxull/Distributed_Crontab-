@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"time"
@@ -36,14 +35,11 @@ func (executor *Executor) ExecuteJob(Info *common.JobExecuteInfo) {
 			OutPut:      make([]byte, 0),
 		}
 
-		//首先获取分布式锁
-		joblock = GlobalJobMgr.CreateJobLock(Info.Job.Name)
+		joblock = GlobalJobMgr.CreateJobLock(Info.Job.Name) //首先获取分布式锁
 
 		result.StartTime = time.Now()
-		
-		fmt.Println("debuggg")
-		//上锁
-		err = joblock.TryLock()
+
+		err = joblock.TryLock() //上锁
 		defer joblock.Unlock()
 
 		if err != nil {
@@ -51,19 +47,15 @@ func (executor *Executor) ExecuteJob(Info *common.JobExecuteInfo) {
 			result.EndTime = time.Now()
 			fmt.Println("上锁失败::", err)
 		} else {
-			//上锁后，获得任务 的执行时间
-			result.StartTime = time.Now()
-			//抢到锁就执行，不然就无法执行
-			cmd = exec.CommandContext(context.TODO(), "/bin/bash", "-c", Info.Job.Commond)
-			output, err = cmd.CombinedOutput()
-			result.EndTime = time.Now()
+			result.StartTime = time.Now()                                                  //上锁后，获得任务 的执行时间
+			cmd = exec.CommandContext(Info.CancelCtx, "/bin/bash", "-c", Info.Job.Commond) //抢到锁就执行，不然就无法执行,Info.CancelCtx 可控的，用于强杀任务的指令
+			output, err = cmd.CombinedOutput()                                             //获取返回的结果
+			result.EndTime = time.Now()                                                    //结束时间
 			result.OutPut = output
 			result.Err = err
 
-			// 任务执行完成之后，需要把任务执行结果返回个 Scheduler，Scheduler会从ExecutingTabl中将正在执行的任务状态给删除
-			//GlobalScheduel.PostJobResult(result)
 		}
-		GlobalScheduel.PostJobResult(result)
+		GlobalScheduel.PostJobResult(result) // 任务执行完成之后，需要把任务执行结果返回个 Scheduler，Scheduler会从ExecutingTabl中将正在执行的任务状态给删除
 	}()
 
 }

@@ -70,7 +70,7 @@ func (jobLock *JobLock) TryLock() (err error) {
 			select {
 			case keepResp = <-keepRespChan: //自动续租应答
 				if keepResp == nil {
-					fmt.Println("DEBUG::续租已经失效了")
+					//fmt.Println("DEBUG::续租已经失效了")
 					goto END
 				} else {
 					fmt.Println("DEBUG::收到自动续租应答，续租成功", keepResp.ID)
