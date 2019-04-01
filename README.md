@@ -1,6 +1,8 @@
 [![996.ICU](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
 # 开发记录
 
+mater节点和 worker 节点之间的交互都是通过 etcd 来实现的。mster 负责向 etcd 中增加，删除，强杀任务;worker 通过监听 etcd 中任务的变化来执行相应的执行任务操作。
+
 
 ## 2019年3月30日
 主要以master 节点为主，完成了一系列功能的编码工作
@@ -39,4 +41,4 @@
 ## BUG
 
 - [x] 删除 job 功能存在问题，经过测试无法获取传入的 job name。
-- [x] worker节点和 master 节点各个功能正常，但是无法直接通过命令行的形式，对 etcd 服务器进行操作。put 和 get 任务都没有，put 任务后，worker 节点能监听到插入信息，但是会报错，插入不成功。  原因：插入目录写错了，写成了`/crob/jobs/`应该为`/cron/jobs/`
+- [x] worker节点和 master 节点各个功能正常，但是无法直接通过命令行的形式，对 etcd 服务器进行操作。put 和 get 任务都没用，put 任务后，worker 节点能监听到插入信息，但是会报错，插入不成功。  原因：插入目录写错了，写成了`/crob/jobs/`应该为`ETCDCTL_API=3 ./etcdctl watch --prefix "/cron/jobs/"` 缺少了参数

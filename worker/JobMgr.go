@@ -7,8 +7,8 @@ import (
 
 	"go.etcd.io/etcd/mvcc/mvccpb"
 
+	"github.com/chenxull/Crontab/crontab/common"
 	"github.com/chenxull/Crontab/crontab/master/Error"
-	"github.com/chenxull/Crontab/crontab/master/common"
 	"go.etcd.io/etcd/clientv3"
 )
 
@@ -49,10 +49,11 @@ func (jobMgr *JobMgr) watchJobs() (err error) {
 			Error.CheckErr(err, "WatchJobs Unmarshal Json error")
 			return
 		} else {
-			//TODO:把这个 job 同步给调度协程(scheduler)
+			//把这个 job 同步给调度协程(scheduler)
 			jobEvent = common.BuildJobEvent(common.JOB_EVENT_SAVE, job)
+			fmt.Println("DUBG::第一次推送任务到调度器", jobEvent.Job.Name) //这个会在第一次启动 worker 节点的时候执行。
+			GlobalScheduel.PushJobEvent(jobEvent)
 
-			fmt.Println("DUBG1::", *jobEvent)
 		}
 	}
 
@@ -75,18 +76,22 @@ func (jobMgr *JobMgr) watchJobs() (err error) {
 						continue
 					}
 					//构建一个更新Event
+					fmt.Println("DUBG::保存事件", jobEvent.Job.Name)
 					jobEvent = common.BuildJobEvent(common.JOB_EVENT_SAVE, job)
-					fmt.Println("DUBG2::", *jobEvent)
+
 				case mvccpb.DELETE: //任务删除事件
 					//推一个删除事件给Scheduler  Delete /cron/jobs/jobName
 					//得到将要被删除的任务名
 					jobName = common.ExtractJobName(string(watchEvent.Kv.Key))
 					job = &common.Job{Name: jobName}
 					//构造一个删除Event
+					fmt.Println("DUBG::删除事件", jobEvent.Job.Name)
 					jobEvent = common.BuildJobEvent(common.JOB_EVENT_DELETE, job)
-					fmt.Println("DUBG3::", *jobEvent)
+
 				}
 				//TODO:推送给scheduler  GlobalScheduler.PushJobEvent(jobEvent)
+				fmt.Println("DEBUG::推送任务到调度器", jobEvent.Job.Name)
+				GlobalScheduel.PushJobEvent(jobEvent)
 			}
 		}
 

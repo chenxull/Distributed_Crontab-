@@ -3,18 +3,21 @@ package common
 import (
 	"encoding/json"
 	"strings"
+	"time"
+
+	"github.com/gorhill/cronexpr"
 
 	"github.com/chenxull/Crontab/crontab/master/Error"
 )
 
-//定时任务
+//Job 定时任务
 type Job struct {
 	Name     string `json:"name"`
 	Commond  string `json:"command"`
 	CronExpr string `json:"cronExpr"`
 }
 
-//http接口应答
+//Response http 接口应答
 type Response struct {
 	Errno int         `json:"errno"`
 	Msg   string      `json:"msg"`
@@ -24,10 +27,17 @@ type Response struct {
 //JobEvent watch 构造的事件，分为二种：更新事件和删除事件
 type JobEvent struct {
 	EventType int
-	job       *Job
+	Job       *Job
 }
 
-//http 应答方法
+//JobSchedulePlan 任务调度计划表
+type JobSchedulePlan struct {
+	Job      *Job                 //需要调度的任务
+	Expr     *cronexpr.Expression //crontab表达式
+	NextTime time.Time            //下次执行的时间
+}
+
+//BuildResponse 构建 http 应答方法
 func BuildResponse(errno int, msg string, data interface{}) (resp []byte, err error) {
 	//1.定义一个Response
 	var (
@@ -66,6 +76,6 @@ func ExtractJobName(jobKey string) string {
 func BuildJobEvent(eventype int, job *Job) (jobEvent *JobEvent) {
 	return &JobEvent{
 		EventType: eventype,
-		job:       job,
+		Job:       job,
 	}
 }

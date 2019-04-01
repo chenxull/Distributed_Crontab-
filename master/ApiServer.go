@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chenxull/Crontab/crontab/common"
 	"github.com/chenxull/Crontab/crontab/master/Error"
-	"github.com/chenxull/Crontab/crontab/master/common"
 )
 
 //ApiServer 任务的 http 接口
@@ -37,7 +37,7 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 
 	//2.取表单中的 job 字段
 	postJob = r.PostForm.Get("job")
-	fmt.Print("DEBUG::", postJob)
+	fmt.Print("DEBUG::保存任务", postJob)
 
 	//3.反序列化 job
 	if err = json.Unmarshal([]byte(postJob), &job); err != nil {
@@ -80,7 +80,7 @@ func handleJobDelete(w http.ResponseWriter, r *http.Request) {
 
 	//2.删除任务名 TODO 无法获取文件名，等待修复
 	deletename = r.PostForm.Get("name")
-	fmt.Println("DEBUG::", deletename)
+	fmt.Println("DEBUG::删除任务", deletename)
 	//3.删除任务
 	if oldJob, err = GlobalJonMgr.DeleteJob(deletename); err != nil {
 		Error.CheckErr(err, "DeleteJob from etcd error")
