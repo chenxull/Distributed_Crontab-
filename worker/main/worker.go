@@ -37,9 +37,14 @@ func main() {
 		Error.CheckErr(err, "WORKER:InitConfig meet some problems")
 	}
 
+	//启动调度器
+	if err = worker.InitScheduel(); err != nil {
+		Error.CheckErr(err, "InitScheduel meet some problems")
+	}
+
 	//初始化任务管理器
-	if err =worker.InitJobMgr();err!=nil{
-		Error.CheckErr(err,"WORKER:InitJobMgr meet some problems")
+	if err = worker.InitJobMgr(); err != nil {
+		Error.CheckErr(err, "WORKER:InitJobMgr meet some problems")
 	}
 
 	for {
