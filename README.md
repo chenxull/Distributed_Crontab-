@@ -65,5 +65,6 @@ exit status 2
 ```
 问题原因：代码逻辑错误，在`JobLock.go`文件中，释放锁逻辑判断错误，应该为当有锁的时候才释放锁，我写成没有锁的时候释放锁。所有才会有空指针错误。
 
-- [ ]无法执行杀死 shell 进程逻辑，可能原jobExecutingTable表中没有存储数据.经过测试问题就是这里，还没有找到解决办法。
-- [ ]数据没有存储到 MongoDB 中。MongoDB 的启动方式的问题，使用`nohut mongod --dbpath=./mydata &`方式启动只会接受本地的请求，修改为使用`nohut mongod --dbpath=./mydata & --bind_ip=0.0.0.0 &` 后就可以存储数据了，不过这种方式不安全，端口对全网公开
+
+- [ ] 无法执行杀死 shell 进程逻辑，可能原jobExecutingTable表中没有存储数据.经过测试问题就是这里，还没有找到解决办法。
+- [ ] 数据没有存储到 MongoDB 中。MongoDB 的启动方式的问题，使用`nohut mongod --dbpath=./mydata &`方式启动只会接受本地的请求，修改为使用`nohut mongod --dbpath=./mydata & --bind_ip=0.0.0.0 &` 后就可以存储数据了，不过这种方式不安全，端口对全网公开
