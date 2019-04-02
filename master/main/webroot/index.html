@@ -26,6 +26,7 @@
         <div class = "col-md-12"> 
             
             <button type="button" class="btn btn-primary"id="new-job">新建任务</button>
+            <button type="button" class="btn btn-success"id="list-worker">健康节点</button>
             
         </div>
     </div>
@@ -99,7 +100,30 @@
               </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
           </div><!-- /.modal -->
-          
+     
+            <!-- 健康节点模态框 -->
+    <div id="worker-modal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">健康节点</h4>
+                <table id="worker-list" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>节点IP地址</th>
+                        </tr>
+                    </thead>
+                    <!-- 使用 javascript 请求服务端的数据放在这里 -->
+                    <tbody>
+                    </tbody>
+                </table>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                </div>
+            </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
 
     <!-- 日志模态框 -->
     <div id="log-modal" class="modal fade" tabindex="-1" role="dialog">
@@ -272,6 +296,36 @@
 
             })
 
+            $('#list-worker').on("click",function(){
+
+                //清空现在 table
+                $('#worker-list tbody').empty() 
+            
+                //请求信息
+                $.ajax({
+                    url:'/worker/list',
+                    dataType :'json',
+                    success:function(resp){
+                        if(resp.errno!=0){
+                            return
+                        }
+
+                        //获取 ipdizhi
+                        var workerList = resp.data
+
+                        //遍历每个IP地址
+                        for (var i=0;i<workerList.length;++i){
+                            var workerIP = workerList[i]
+                            var tr = $('<tr>')
+                            tr.append($('<td>').html(workerIP))
+                            $('#worker-list tbody').append(tr)
+                        }
+                    }
+
+                })
+                //弹出模态框，显示信息 
+                $('#worker-modal').modal('show') 
+            })
 
             //定义一个函数，用于刷新任务列表,每次执行一次操作后，执行一个刷新操作，显示etcd 中最新的信息
             function rebuildJobList(){

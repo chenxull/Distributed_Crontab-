@@ -163,4 +163,7 @@ func BuildExecuteInfo(jobSchedulePlan *JobSchedulePlan) (jobExecuteInfo *JobExec
 	return
 }
 
-// 构造
+// ExtractWorkerIP 提取 worker 的 ip
+func ExtractWorkerIP(regKey string) string {
+	return strings.TrimPrefix(regKey, JOB_WORKER_DIR)
+}

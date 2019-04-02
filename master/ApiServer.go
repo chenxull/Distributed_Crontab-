@@ -191,9 +191,26 @@ func handleJobLog(w http.ResponseWriter, r *http.Request) {
 	if bytes, err = common.BuildResponse(0, "success", logArr); err != nil {
 		Error.CheckErr(err, "Build LogList Response error")
 		return
-	} else {
-		w.Write(bytes)
 	}
+	w.Write(bytes)
+
+}
+
+//服务发现
+func handleWorkerList(w http.ResponseWriter, r *http.Request) {
+	var (
+		workerArr []string
+		bytes     []byte
+		err       error
+	)
+	if workerArr, err = GlobalWorkerMgr.ListWorkers(); err != nil {
+		Error.CheckErr(err, "APISERVER:获取 worker IP 失败")
+	}
+	if bytes, err = common.BuildResponse(0, "success", workerArr); err != nil {
+		Error.CheckErr(err, "Build LogList Response error")
+		return
+	}
+	w.Write(bytes)
 
 }
 
@@ -220,6 +237,7 @@ func InitApiServer() (err error) {
 	mux.HandleFunc("/job/list", handleJobList)
 	mux.HandleFunc("/job/kill", handleJobKill)
 	mux.HandleFunc("/job/log", handleJobLog)
+	mux.HandleFunc("/worker/list", handleWorkerList)
 
 	//静态文件目录
 	staticDir = http.Dir(GlobalConfig.Webroot)

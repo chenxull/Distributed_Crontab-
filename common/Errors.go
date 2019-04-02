@@ -8,6 +8,7 @@ import (
 var (
 	//ErrLockAlreadyRequired 锁被占用
 	ErrLockAlreadyRequired = errors.New("锁已经被占用")
+	ErrNoLocalIPFound      = errors.New("没有找到网卡IP ")
 )
 
 //CheckErr 错误处理

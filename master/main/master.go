@@ -41,6 +41,12 @@ func main() {
 	if err = master.InitLogMgr(); err != nil {
 		Error.CheckErr(err, "InitLogMgr meet some problems")
 	}
+
+	//集群管理器,服务发现模块
+	if err = master.InitWorkerMgr(); err != nil {
+		Error.CheckErr(err, "InitWorkerMgr meet some problems")
+	}
+
 	//任务管理器
 	if err = master.InitJobMgr(); err != nil {
 		Error.CheckErr(err, "InitJobMgr meet some problems")

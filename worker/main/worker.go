@@ -37,6 +37,11 @@ func main() {
 		Error.CheckErr(err, "WORKER:InitConfig meet some problems")
 	}
 
+	//加载服务注册功能
+	if err = worker.InitRegister(); err != nil {
+		Error.CheckErr(err, "WORKER:InitRegister meet some problem")
+	}
+
 	//启动日志协程
 	if err = worker.InitLogSink(); err != nil {
 		Error.CheckErr(err, "WORKER:InitLogSink meet some error")
