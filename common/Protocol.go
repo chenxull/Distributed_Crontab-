@@ -47,7 +47,24 @@ type JobExecuteInfo struct {
 	CancelFunc context.CancelFunc //用于取消 command执行 的函数
 }
 
-//JobExecuteResult 任务执行结构
+//JobLog 任务日志
+type JobLog struct {
+	JobName      string `bson:"jobName"`      //任务名字
+	Command      string `bson:"command"`      //脚本命令
+	Err          string `bson:"err"`          //错误信息
+	OutPut       string `bson:"outPut"`       //脚本输出
+	PlanTime     int64  `bson:"planTime"`     // 计划开始时间
+	ScheduleTime int64  `bson:"scheduleTime"` //实际调度时间
+	StartTime    int64  `bson:"startTime"`    //任务开始时间
+	EndTime      int64  `bson:"endTime"`      //任务结束时间
+}
+
+//LogBatch 日志批次
+type LogBatch struct {
+	Logs []interface{} //多条日志
+}
+
+//JobExecuteResult 任务执行结果
 type JobExecuteResult struct {
 	ExecuteInfo *JobExecuteInfo //任务执行状态
 	OutPut      []byte          //脚本输出

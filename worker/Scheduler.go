@@ -44,12 +44,7 @@ func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 			delete(scheduler.jobPlanTable, jobEvent.Job.Name)
 		}
 	case common.JOB_EVENT_KILL: //强杀任务
-		if scheduler.jobExecutingTable == nil {
-			fmt.Println("执行表为空！！！！！")
-		} else {
-			fmt.Println("执行表不为空！！！！！！", jobEvent.Job.Name)
-			fmt.Println("正在执行的任务：", scheduler.jobExecutingTable[jobEvent.Job.Name])
-		}
+
 		if jobExecuteInfo, jobExectuing = scheduler.jobExecutingTable[jobEvent.Job.Name]; jobExectuing {
 			fmt.Println("杀死shell进程", jobExecuteInfo.Job.Name)
 			jobExecuteInfo.CancelFunc() //触发 command 杀死对应的shell 子进程
@@ -65,7 +60,31 @@ func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 //处理任务的结果
 func (scheduler *Scheduler) handleJobResutl(jobResult *common.JobExecuteResult) {
 
+	var (
+		jobLog *common.JobLog
+	)
 	delete(scheduler.jobExecutingTable, jobResult.ExecuteInfo.Job.Name) //删除jobExecutingTabl中的任务状态
+	//生成日志
+	if jobResult.Err != common.ErrLockAlreadyRequired {
+		jobLog = &common.JobLog{
+			JobName:      jobResult.ExecuteInfo.Job.Name,
+			Command:      jobResult.ExecuteInfo.Job.Commond,
+			OutPut:       string(jobResult.OutPut),
+			PlanTime:     jobResult.ExecuteInfo.PlanTime.UnixNano() / 1000 / 1000,
+			ScheduleTime: jobResult.ExecuteInfo.RealTime.UnixNano() / 1000 / 1000,
+			StartTime:    jobResult.StartTime.UnixNano() / 1000 / 1000,
+			EndTime:      jobResult.EndTime.UnixNano() / 1000 / 1000,
+		}
+		if jobResult.Err != nil {
+			jobLog.Err = jobResult.Err.Error()
+		} else {
+			jobLog.Err = ""
+		}
+		GlobalLogSink.Append(jobLog)
+	}
+
+	//TODO:数据存储的 MongoDB 中
+
 	fmt.Println("任务执行完成", jobResult.ExecuteInfo.Job.Name, string(jobResult.OutPut), jobResult.Err)
 }
 
@@ -75,10 +94,12 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 		jobExecuteInfo *common.JobExecuteInfo //单个任务执行的状态
 		jobExisted     bool
 	)
+
 	fmt.Println("打印任务执行列表中的数据:")
 	for testname, testJobinfo := range scheduler.jobExecutingTable {
 		fmt.Println("name:", testname, "jobexecuteInfo", testJobinfo)
 	}
+
 	//执行的时间可能会很长，比如说任务1分钟会调度60次，但是只能执行1次，这个时候就需要任务去重
 	//判断需要执行的任务是否正在执行，如果是，直接跳过
 	if jobExecuteInfo, jobExisted = scheduler.jobExecutingTable[jobPlan.Job.Name]; jobExisted {

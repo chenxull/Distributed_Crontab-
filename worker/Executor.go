@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"math/rand"
 	"os/exec"
 	"time"
 
@@ -39,6 +40,8 @@ func (executor *Executor) ExecuteJob(Info *common.JobExecuteInfo) {
 
 		result.StartTime = time.Now()
 
+		//随机随眠
+		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		err = joblock.TryLock() //上锁
 		defer joblock.Unlock()
 

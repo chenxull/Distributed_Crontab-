@@ -37,6 +37,12 @@ func main() {
 		Error.CheckErr(err, "WORKER:InitConfig meet some problems")
 	}
 
+	//启动日志协程
+	if err = worker.InitLogSink(); err != nil {
+		Error.CheckErr(err, "WORKER:InitLogSink meet some error")
+	}
+
+	//启动执行器
 	if err = worker.InitExecutor(); err != nil {
 		Error.CheckErr(err, "WORKER:InitExecutor meet some problems")
 
