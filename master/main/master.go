@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/chenxull/Crontab/crontab/master"
-	"github.com/chenxull/Crontab/crontab/master/Error"
 	"runtime"
 	"time"
+
+	"github.com/chenxull/Crontab/crontab/master"
+	"github.com/chenxull/Crontab/crontab/master/Error"
 )
 
 var (
@@ -36,9 +37,13 @@ func main() {
 		Error.CheckErr(err, "InitConfig meet some problems")
 	}
 
+	//加载日志管理器
+	if err = master.InitLogMgr(); err != nil {
+		Error.CheckErr(err, "InitLogMgr meet some problems")
+	}
 	//任务管理器
-	if err = master.InitMgr(); err != nil {
-		Error.CheckErr(err, "InitMgr meet some problems")
+	if err = master.InitJobMgr(); err != nil {
+		Error.CheckErr(err, "InitJobMgr meet some problems")
 		return
 	}
 	//启动API http 服务

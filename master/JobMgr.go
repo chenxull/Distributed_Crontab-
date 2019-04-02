@@ -21,10 +21,10 @@ type JobMgr struct {
 
 var (
 	//单例
-	GlobalJonMgr *JobMgr
+	GlobalJobMgr *JobMgr
 )
 
-func InitMgr() (err error) {
+func InitJobMgr() (err error) {
 
 	var (
 		config clientv3.Config
@@ -49,7 +49,7 @@ func InitMgr() (err error) {
 	lease = clientv3.Lease(client)
 
 	//配置 单例
-	GlobalJonMgr = &JobMgr{
+	GlobalJobMgr = &JobMgr{
 		client: client,
 		kv:     kv,
 		lease:  lease,
@@ -103,7 +103,7 @@ func (jobMgr *JobMgr) DeleteJob(name string) (oldJob *common.Job, err error) {
 	fmt.Println(jobKey)
 
 	//从 etcd 中删除
-	if delResp, err = GlobalJonMgr.kv.Delete(context.TODO(), jobKey, clientv3.WithPrevKV()); err != nil {
+	if delResp, err = GlobalJobMgr.kv.Delete(context.TODO(), jobKey, clientv3.WithPrevKV()); err != nil {
 		Error.CheckErr(err, "Delete job from etcd error ")
 		return
 	}

@@ -46,7 +46,7 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//4.保存到 etcd
-	if oldJob, err = GlobalJonMgr.Savejob(&job); err != nil {
+	if oldJob, err = GlobalJobMgr.Savejob(&job); err != nil {
 		Error.CheckErr(err, "ApiServer: Save the job to etcd error ")
 		return
 	}
@@ -82,7 +82,7 @@ func handleJobDelete(w http.ResponseWriter, r *http.Request) {
 	deletename = r.PostForm.Get("name")
 	fmt.Println("DEBUG::删除任务", deletename)
 	//3.删除任务
-	if oldJob, err = GlobalJonMgr.DeleteJob(deletename); err != nil {
+	if oldJob, err = GlobalJobMgr.DeleteJob(deletename); err != nil {
 		Error.CheckErr(err, "DeleteJob from etcd error")
 		return
 	}
@@ -113,7 +113,7 @@ func handleJobList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//获取任务列表
-	if jobList, err = GlobalJonMgr.ListJobs(); err != nil {
+	if jobList, err = GlobalJobMgr.ListJobs(); err != nil {
 		Error.CheckErr(err, "Get the jobs list error")
 		return
 	}
@@ -136,7 +136,7 @@ func handleJobKill(w http.ResponseWriter, r *http.Request) {
 	//杀死任务
 	killName := r.PostForm.Get("name")
 
-	if err = GlobalJonMgr.KillJob(killName); err != nil {
+	if err = GlobalJobMgr.KillJob(killName); err != nil {
 		Error.CheckErr(err, "Kill job error ")
 		return
 	}
@@ -148,6 +148,49 @@ func handleJobKill(w http.ResponseWriter, r *http.Request) {
 		Error.CheckErr(err, "BuildRespons error")
 		w.Write(bytes)
 	}
+}
+
+//查询任务日志
+func handleJobLog(w http.ResponseWriter, r *http.Request) {
+	var (
+		err    error
+		skip   int
+		limit  int
+		logArr []*common.JobLog
+		bytes  []byte
+	)
+	if err = r.ParseForm(); err != nil {
+		Error.CheckErr(err, "HandleJobLog parse form error")
+		return
+	}
+
+	//获取请求参数 /job/log?name = job1&skip=0&limit=10
+	name := r.Form.Get("name")
+	skipParam := r.Form.Get("skip")
+	LimitParam := r.Form.Get("limit")
+
+	if skip, err = strconv.Atoi(skipParam); err != nil {
+		Error.CheckErr(err, "HandleJobLog parse string to byte error ")
+		skip = 0
+
+	}
+
+	if limit, err = strconv.Atoi(LimitParam); err != nil {
+		Error.CheckErr(err, "HandleJobLog parse string to byte error ")
+		limit = 20
+	}
+
+	if logArr, err = GlobalLogMgr.ListLog(name, skip, limit); err != nil {
+		Error.CheckErr(err, "获取日志信息失败")
+	}
+
+	if bytes, err = common.BuildResponse(0, "success", logArr); err != nil {
+		Error.CheckErr(err, "Build LogList Response error")
+		return
+	} else {
+		w.Write(bytes)
+	}
+
 }
 
 var (
@@ -172,6 +215,7 @@ func InitApiServer() (err error) {
 	mux.HandleFunc("/job/delete", handleJobDelete)
 	mux.HandleFunc("/job/list", handleJobList)
 	mux.HandleFunc("/job/kill", handleJobKill)
+	mux.HandleFunc("/job/log", handleJobLog)
 
 	//静态文件目录
 	staticDir = http.Dir(GlobalConfig.Webroot)

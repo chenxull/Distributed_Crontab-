@@ -73,6 +73,16 @@ type JobExecuteResult struct {
 	EndTime     time.Time
 }
 
+//JobLogFilter 日志过滤器
+type JobLogFilter struct {
+	JobName string `bson:"jobName"`
+}
+
+// SortLogByStartTime 任务日志排序规则
+type SortLogByStartTime struct {
+	SortOrder int `bson:"startTime"` //按 startTime:-1
+}
+
 //BuildResponse 构建 http 应答方法
 func BuildResponse(errno int, msg string, data interface{}) (resp []byte, err error) {
 	//1.定义一个Response
@@ -152,3 +162,5 @@ func BuildExecuteInfo(jobSchedulePlan *JobSchedulePlan) (jobExecuteInfo *JobExec
 	jobExecuteInfo.CancelCtx, jobExecuteInfo.CancelFunc = context.WithCancel(context.TODO())
 	return
 }
+
+// 构造

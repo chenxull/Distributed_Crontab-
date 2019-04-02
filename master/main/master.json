@@ -17,5 +17,12 @@
 
 
   "web页面根目录":"静态页面，前后端分离",
-  "webroot":"./webroot"
+  "webroot":"./webroot",
+
+
+  "mongodb地址":"采用mongodb URI",
+  "mongodbUri":"mongodb://192.168.191.10:27017",
+
+  "mongodb连接超时时间": "单位毫秒",
+  "mongodbConnectTimeout": 5000
 }
