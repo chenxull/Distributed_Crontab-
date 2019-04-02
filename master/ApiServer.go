@@ -169,17 +169,21 @@ func handleJobLog(w http.ResponseWriter, r *http.Request) {
 	skipParam := r.Form.Get("skip")
 	LimitParam := r.Form.Get("limit")
 
-	if skip, err = strconv.Atoi(skipParam); err != nil {
-		Error.CheckErr(err, "HandleJobLog parse string to byte error ")
-		skip = 0
+	if len(skipParam) != 0 && len(LimitParam) != 0 {
+		if skip, err = strconv.Atoi(skipParam); err != nil {
+			Error.CheckErr(err, "HandleJobLog parse string to byte error ")
+			skip = 0
 
+		}
+
+		if limit, err = strconv.Atoi(LimitParam); err != nil {
+			Error.CheckErr(err, "HandleJobLog parse string to byte error ")
+			limit = 20
+		}
 	}
 
-	if limit, err = strconv.Atoi(LimitParam); err != nil {
-		Error.CheckErr(err, "HandleJobLog parse string to byte error ")
-		limit = 20
-	}
-
+	skip = 0
+	limit = 20
 	if logArr, err = GlobalLogMgr.ListLog(name, skip, limit); err != nil {
 		Error.CheckErr(err, "获取日志信息失败")
 	}

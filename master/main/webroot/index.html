@@ -67,9 +67,9 @@
         </div>
     </div>
 
-    <!-- positon fixed 放置在任何位置都可以 -->
+    <!-- positon fixed 放置在任何位置都可以，编辑模态框 -->
     <div id="edit-modal" class="modal fade" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
               <div class="modal-content">
                 <div class="modal-header">
                   <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -101,10 +101,62 @@
           </div><!-- /.modal -->
           
 
-
+    <!-- 日志模态框 -->
+    <div id="log-modal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">任务日志</h4>
+            <table id="log-list" class="table table-striped">
+                <!-- 表头 -->
+                <thead>
+                    <tr>
+                        <th>shell 命令</th>
+                        <th>错误原因</th>
+                        <th>脚本输出</th>
+                        <th>计划开始时间</th>
+                        <th>实际调度时间</th>
+                        <th>开始执行时间</th>
+                        <th>执行结束时间</th>
+                    </tr>
+                </thead>
+                <!-- 使用 javascript 请求服务端的数据放在这里 -->
+                <tbody>
+                     
+                </tbody>
+            </table>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            </div>
+        </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
     <script>
         $(document).ready(function(){
-            
+            // 时间格式化函数
+            function timeFormat(millsecond) {
+                // 前缀补0: 2018-08-07 08:01:03.345
+                function paddingNum(num, n) {
+                    var len = num.toString().length
+                    while (len < n) {
+                        num = '0' + num
+                        len++
+                    }
+                    return num
+                }
+                var date = new Date(millsecond)
+                var year = date.getFullYear()
+                var month = paddingNum(date.getMonth() + 1, 2)
+                var day = paddingNum(date.getDate(), 2)
+                var hour = paddingNum(date.getHours(), 2)
+                var minute = paddingNum(date.getMinutes(), 2)
+                var second = paddingNum(date.getSeconds(), 2)
+                var millsecond = paddingNum(date.getMilliseconds(), 3)
+                return year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second + "." + millsecond
+            }
+
+
             //新建任务,显示模态框，将其中的值都设置为空
             $("#new-job").on("click",function(){
                 $('#edit-name').val("")
@@ -124,9 +176,7 @@
                 $('#edit-name').val(jobName)
                 $('#edit-command').val(jobCommand)
                 $('#edit-cronExpr').val(jobCronExpr)
-                // console.log(jobName)
-                // console.log(jobCommand)
-                // console.log(jobCronExpr)
+             
 
                
                 $('#edit-modal').modal('show')
@@ -182,6 +232,47 @@
                 })
             })
         
+            //日志任务
+            $("#job-list").on("click",".log-job",function(event){
+                //清空模态框
+                $('#log-list tbody').empty()
+                //获取任务名
+                var jobName = $(this).parents("tr").children(".job-name").text() 
+                //请求/job/log
+                $.ajax({
+                    url:"/job/log",
+                    type:'get',
+                    dataType:'json',
+                    data:{name:jobName},
+                    success:function(resp){
+                        if (resp.errno != 0){
+                            return 
+                        }
+                        // 遍历日志
+                        var logList = resp.data
+                        for (var i = 0; i < logList.length; ++i) {
+                            var log = logList[i]
+                            var tr = $('<tr>')
+                            tr.append($('<td>').html(log.command))
+                            tr.append($('<td>').html(log.err))
+                            tr.append($('<td>').html(log.outPut))
+                            tr.append($('<td>').html(timeFormat(log.planTime)))
+                            tr.append($('<td>').html(timeFormat(log.scheduleTime)))
+                            tr.append($('<td>').html(timeFormat(log.startTime)))
+                            tr.append($('<td>').html(timeFormat(log.endTime)))
+                            console.log(tr)
+                            $('#log-list tbody').append(tr)
+                        }
+
+                    }
+                })
+
+                //弹出模态框
+                $('#log-modal').modal('show')
+
+            })
+
+
             //定义一个函数，用于刷新任务列表,每次执行一次操作后，执行一个刷新操作，显示etcd 中最新的信息
             function rebuildJobList(){
                 //job/list
@@ -213,6 +304,7 @@
                                 .append('<button class="btn btn-info edit-job">编辑</button>')
                                 .append('<button class="btn btn-danger delete-job">删除</button>') 
                                 .append('<button class="btn btn-warning kill-job">强杀</button>')
+                                .append('<button class="btn btn-success log-job">日志</button>')
                             tr.append($('<td>').append(toolbar))
                             $("#job-list tbody").append(tr)
 
