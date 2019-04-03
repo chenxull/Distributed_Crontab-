@@ -27,25 +27,24 @@ var (
 )
 
 //InitConfig 加载配置
-func InitConfig(filename string) (err error) {
-	var (
-		content []byte
-		Conf    Config
-	)
-	//1. 读取配置文件
-	if content, err = ioutil.ReadFile(filename); err != nil {
-		Error.CheckErr(err, "Read the Config file error")
-		return
-	}
+func InitConfig(filename string) error {
 
+	//1. 读取配置文件
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		Error.CheckErr(err, "Read the Config file error")
+		return err
+	}
+	var Conf Config
 	//2.做反序列化处理，将读取到的配置文件信息存储到Config结构体中
-	if err = json.Unmarshal(content, &Conf); err != nil {
+	err = json.Unmarshal(content, &Conf)
+	if err != nil {
 		Error.CheckErr(err, "Parse the content to Conf error")
-		return
+		return err
 	}
 	GlobalConfig = &Conf
 
 	fmt.Println(Conf)
 
-	return
+	return err
 }
