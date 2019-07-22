@@ -80,7 +80,6 @@ func (jobMgr *JobMgr) Savejob(job *common.Job) (oldjob *common.Job, err error) {
 		return
 	}
 	//如果是更新操作，返回旧值
-
 	if putResp.PrevKv != nil {
 		if err = json.Unmarshal(putResp.PrevKv.Value, &oldJobObj); err != nil {
 			err = nil

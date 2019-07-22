@@ -20,23 +20,22 @@ type ApiServer struct {
 //保存任务接口
 //POST job= {"name":"job","command":"echo hello","cronExpr":"*/5 * * * * *"}
 func handleJobServe(w http.ResponseWriter, r *http.Request) {
+	//提前把变量声明好，便于理解变量的含义
 	var (
-		err     error
-		postJob string
-		job     common.Job
-		oldJob  *common.Job
-		bytes   []byte
+		job    common.Job
+		oldJob *common.Job
+		bytes  []byte
 	)
 	//任务保存到 etcd 中
 	//1.解析表单
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		Error.CheckErr(err, "HandleJobServe:Parse Form error")
 		return
 	}
 
 	//2.取表单中的 job 字段
-	postJob = r.PostForm.Get("job")
+	postJob := r.PostForm.Get("job")
 	fmt.Print("DEBUG::保存任务", postJob)
 
 	//3.反序列化 job
@@ -223,7 +222,6 @@ var (
 func InitApiServer() (err error) {
 
 	var (
-		mux           *http.ServeMux
 		listener      net.Listener
 		httpServer    *http.Server
 		staticDir     http.Dir     //静态文件目录
@@ -231,7 +229,7 @@ func InitApiServer() (err error) {
 	)
 
 	//配置路由
-	mux = http.NewServeMux()
+	mux := http.NewServeMux()
 	mux.HandleFunc("/job/save", handleJobServe) //注册服务，当web 端请求对应的路径时，就会调用对应函数
 	mux.HandleFunc("/job/delete", handleJobDelete)
 	mux.HandleFunc("/job/list", handleJobList)
@@ -261,7 +259,7 @@ func InitApiServer() (err error) {
 	GlobalAPIServer = &ApiServer{
 		httpServer: httpServer,
 	}
-	//启动服务 TODO 没有进行错误处理
+	//启动服务
 	go httpServer.Serve(listener)
 
 	return

@@ -35,8 +35,6 @@ func InitLogMgr() error {
 		logCollection: client.Database("cron").Collection("log"),
 	}
 
-	//启动 MongoDB 处理协程
-
 	return err
 
 }

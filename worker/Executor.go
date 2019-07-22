@@ -17,7 +17,7 @@ var (
 	GlobalExecutor *Executor
 )
 
-//ExecuteJob 执行任务
+//ExecuteJob 执行任务,执行任务实质上调用 exec.CommandContext执行任务的 command
 func (executor *Executor) ExecuteJob(Info *common.JobExecuteInfo) {
 
 	//任务执行协程
@@ -50,10 +50,12 @@ func (executor *Executor) ExecuteJob(Info *common.JobExecuteInfo) {
 			result.EndTime = time.Now()
 			fmt.Println("上锁失败::", err)
 		} else {
-			result.StartTime = time.Now()                                                  //上锁后，获得任务 的执行时间
+			result.StartTime = time.Now() //上锁后，获得任务 的执行时间
+			//核心语句，用来执行 shell 脚本
 			cmd = exec.CommandContext(Info.CancelCtx, "/bin/bash", "-c", Info.Job.Commond) //抢到锁就执行，不然就无法执行,Info.CancelCtx 可控的，用于强杀任务的指令
-			output, err = cmd.CombinedOutput()                                             //获取返回的结果
-			result.EndTime = time.Now()                                                    //结束时间
+			//获取任务执行结果
+			output, err = cmd.CombinedOutput() //获取返回的结果
+			result.EndTime = time.Now()        //结束时间
 			result.OutPut = output
 			result.Err = err
 

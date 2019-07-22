@@ -11,6 +11,9 @@ import (
 	"go.etcd.io/etcd/clientv3"
 )
 
+//上锁本质上就是对 etcd 中的任务创建定时租约，通过leaseID 与任务进行绑定,绑定之后，当其他的 worker 节点想要抢占此任务时
+//会调用 etcd 中G rant 方法创建一个租约来和任务进行绑定，如果绑定成功，则说明抢占到任务了。
+//JobLock 任务锁结构
 type JobLock struct {
 	kv    clientv3.KV
 	lease clientv3.Lease

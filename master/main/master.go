@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"runtime"
 	"time"
 
@@ -61,6 +60,5 @@ func main() {
 	for {
 		time.Sleep(1 * time.Second)
 	}
-	fmt.Println("start successful")
 
 }

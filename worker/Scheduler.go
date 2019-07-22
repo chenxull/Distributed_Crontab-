@@ -83,8 +83,6 @@ func (scheduler *Scheduler) handleJobResutl(jobResult *common.JobExecuteResult) 
 		GlobalLogSink.Append(jobLog)
 	}
 
-	//TODO:数据存储的 MongoDB 中
-
 	fmt.Println("任务执行完成", jobResult.ExecuteInfo.Job.Name, string(jobResult.OutPut), jobResult.Err)
 }
 
@@ -94,11 +92,11 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 		jobExecuteInfo *common.JobExecuteInfo //单个任务执行的状态
 		jobExisted     bool
 	)
-
-	fmt.Println("打印任务执行列表中的数据:")
-	for testname, testJobinfo := range scheduler.jobExecutingTable {
-		fmt.Println("name:", testname, "jobexecuteInfo", testJobinfo)
-	}
+	//
+	//fmt.Println("打印任务执行列表中的数据:")
+	//for testname, testJobinfo := range scheduler.jobExecutingTable {
+	//	fmt.Println("name:", testname, "jobexecuteInfo", testJobinfo)
+	//}
 
 	//执行的时间可能会很长，比如说任务1分钟会调度60次，但是只能执行1次，这个时候就需要任务去重
 	//判断需要执行的任务是否正在执行，如果是，直接跳过
@@ -112,11 +110,12 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 	scheduler.jobExecutingTable[jobPlan.Job.Name] = jobExecuteInfo //保存执行状态到 任务执行状态表中
 
 	fmt.Println("执行任务:", jobExecuteInfo.Job.Name, jobExecuteInfo.PlanTime, jobExecuteInfo.RealTime)
+	//执行任务的入口
 	GlobalExecutor.ExecuteJob(jobExecuteInfo)
 
 }
 
-//TrySchedule 重新计算任务调度状态并执行到期任务   ,计算休眠时间
+//TrySchedule 根据任务计划表来重新计算任务调度状态并执行到期任务
 func (scheduler *Scheduler) TrySchedule() (scheduleAfter time.Duration) {
 	var (
 		jobPlan  *common.JobSchedulePlan
@@ -172,6 +171,7 @@ func (scheduler *Scheduler) scheduleLoop() {
 		case jobResult = <-scheduler.jobResultChan: //监听任务结果时间
 			scheduler.handleJobResutl(jobResult)
 		}
+		//处理完相关的任务事件时候，尝试对任务进行调度
 		scheduleAfter = scheduler.TrySchedule() //调度一次任务
 		scheduleTimer.Reset(scheduleAfter)      //更新一下定时器
 

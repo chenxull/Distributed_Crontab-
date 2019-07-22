@@ -88,7 +88,6 @@ func (jobMgr *JobMgr) watchJobs() (err error) {
 					jobEvent = common.BuildJobEvent(common.JOB_EVENT_DELETE, job)
 
 				}
-				//TODO:推送给scheduler  GlobalScheduler.PushJobEvent(jobEvent)
 				fmt.Println("DEBUG::推送任务到调度器", jobEvent.Job.Name)
 				GlobalScheduel.PushJobEvent(jobEvent)
 			}
