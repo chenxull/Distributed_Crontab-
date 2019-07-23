@@ -21,6 +21,25 @@ var (
 	GlobalScheduel *Scheduler
 )
 
+//InitScheduel 初始化调度器
+func InitScheduel() (err error) {
+
+	GlobalScheduel = &Scheduler{
+		jobEventChan:      make(chan *common.JobEvent, 1000),
+		jobPlanTable:      make(map[string]*common.JobSchedulePlan),
+		jobExecutingTable: make(map[string]*common.JobExecuteInfo),
+		jobResultChan:     make(chan *common.JobExecuteResult, 1000),
+	}
+
+	/*
+		使用协程起一个调度循环，不停的进行调度任务。
+		调度任务的本质就是接受来自 JobMgr 中的 watchJob 函数调用 PushJobEvent 传来的任务事件，
+		任务事件被传递到 scheduleLoop中后，根据任务的类型不同将相应的任务添加到 jobscheduleTable中或从中删除，
+	*/
+	go GlobalScheduel.scheduleLoop()
+	return
+}
+
 //处理任务事件
 func (scheduler *Scheduler) handleJobEvent(jobEvent *common.JobEvent) {
 	var (
@@ -125,7 +144,7 @@ func (scheduler *Scheduler) TrySchedule() (scheduleAfter time.Duration) {
 
 	//如果scheduler.jobPlanTable 为空的话，睡眠1秒
 	if len(scheduler.jobPlanTable) == 0 {
-		scheduleAfter = 1 * time.Second
+		scheduleAfter = 2 * time.Second
 		fmt.Println("任务调度表中暂时没有任务。")
 		return
 	}
@@ -153,15 +172,13 @@ func (scheduler *Scheduler) TrySchedule() (scheduleAfter time.Duration) {
 //for循环不停的监听任务，睡眠时间有TrySchedule确定调度协程
 func (scheduler *Scheduler) scheduleLoop() {
 	var (
-		jobEvent      *common.JobEvent
-		scheduleAfter time.Duration
-		scheduleTimer *time.Timer
-		jobResult     *common.JobExecuteResult
+		jobEvent  *common.JobEvent
+		jobResult *common.JobExecuteResult
 	)
 
-	scheduleAfter = scheduler.TrySchedule() //初始化睡眠时间，第一次执行时为1秒
+	scheduleAfter := scheduler.TrySchedule() //初始化睡眠时间，第一次执行时为1秒
 
-	scheduleTimer = time.NewTimer(scheduleAfter) //设置定时器
+	scheduleTimer := time.NewTimer(scheduleAfter) //设置定时器
 
 	for {
 		select {
@@ -181,25 +198,6 @@ func (scheduler *Scheduler) scheduleLoop() {
 //PushJobEvent 推送任务变化事件 ,这里接受到任务之后，通过 channel 发送给 scheduleLoop
 func (scheduler *Scheduler) PushJobEvent(job *common.JobEvent) {
 	scheduler.jobEventChan <- job
-}
-
-//InitScheduel 初始化调度器
-func InitScheduel() (err error) {
-
-	GlobalScheduel = &Scheduler{
-		jobEventChan:      make(chan *common.JobEvent, 1000),
-		jobPlanTable:      make(map[string]*common.JobSchedulePlan),
-		jobExecutingTable: make(map[string]*common.JobExecuteInfo),
-		jobResultChan:     make(chan *common.JobExecuteResult, 1000),
-	}
-
-	/*
-		使用协程起一个调度循环，不停的进行调度任务。
-		调度任务的本质就是接受来自 JobMgr 中的 watchJob 函数调用 PushJobEvent 传来的任务事件，
-		任务事件被传递到 scheduleLoop中后，根据任务的类型不同将相应的任务添加到 jobscheduleTable中或从中删除，
-	*/
-	go GlobalScheduel.scheduleLoop()
-	return
 }
 
 //PostJobResult 获取任务执行结果

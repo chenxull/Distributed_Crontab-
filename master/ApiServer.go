@@ -22,9 +22,7 @@ type ApiServer struct {
 func handleJobServe(w http.ResponseWriter, r *http.Request) {
 	//提前把变量声明好，便于理解变量的含义
 	var (
-		job    common.Job
-		oldJob *common.Job
-		bytes  []byte
+		bytes []byte
 	)
 	//任务保存到 etcd 中
 	//1.解析表单
@@ -39,13 +37,15 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 	fmt.Print("DEBUG::保存任务", postJob)
 
 	//3.反序列化 job
+	var job common.Job
 	if err = json.Unmarshal([]byte(postJob), &job); err != nil {
 		Error.CheckErr(err, "Parse postJon to Job struct error")
 		return
 	}
 
 	//4.保存到 etcd
-	if oldJob, err = GlobalJobMgr.Savejob(&job); err != nil {
+	oldJob, err := GlobalJobMgr.Savejob(&job)
+	if err != nil {
 		Error.CheckErr(err, "ApiServer: Save the job to etcd error ")
 		return
 	}
@@ -65,29 +65,27 @@ func handleJobServe(w http.ResponseWriter, r *http.Request) {
 
 //删除任务接口 POST /job/delete name = job1
 func handleJobDelete(w http.ResponseWriter, r *http.Request) {
-	var (
-		err        error
-		deletename string
-		oldJob     *common.Job
-		bytes      []byte
-	)
+
 	//1.解析表单
-	if err = r.ParseForm(); err != nil {
+	err := r.ParseForm()
+	if err != nil {
 		Error.CheckErr(err, "HandleJobDelete:Parse Form error")
 		return
 	}
 
 	//2.删除任务名 TODO 无法获取文件名，等待修复
-	deletename = r.PostForm.Get("name")
+	deletename := r.PostForm.Get("name")
 	fmt.Println("DEBUG::删除任务", deletename)
+
 	//3.删除任务
-	if oldJob, err = GlobalJobMgr.DeleteJob(deletename); err != nil {
+	oldJob, err := GlobalJobMgr.DeleteJob(deletename)
+	if err != nil {
 		Error.CheckErr(err, "DeleteJob from etcd error")
 		return
 	}
 
 	//4.返回正常应答
-	bytes, err = common.BuildResponse(0, "success", oldJob)
+	bytes, err := common.BuildResponse(0, "success", oldJob)
 	if err == nil {
 
 		w.Write(bytes) //将数据发送回去
@@ -151,14 +149,9 @@ func handleJobKill(w http.ResponseWriter, r *http.Request) {
 
 //查询任务日志
 func handleJobLog(w http.ResponseWriter, r *http.Request) {
-	var (
-		err    error
-		skip   int
-		limit  int
-		logArr []*common.JobLog
-		bytes  []byte
-	)
-	if err = r.ParseForm(); err != nil {
+
+	err := r.ParseForm()
+	if err != nil {
 		Error.CheckErr(err, "HandleJobLog parse form error")
 		return
 	}
@@ -167,27 +160,30 @@ func handleJobLog(w http.ResponseWriter, r *http.Request) {
 	name := r.Form.Get("name")
 	skipParam := r.Form.Get("skip")
 	LimitParam := r.Form.Get("limit")
-
+	skip := 0
+	limit := 20
 	if len(skipParam) != 0 && len(LimitParam) != 0 {
-		if skip, err = strconv.Atoi(skipParam); err != nil {
+		skip, err = strconv.Atoi(skipParam)
+		if err != nil {
 			Error.CheckErr(err, "HandleJobLog parse string to byte error ")
 			skip = 0
 
 		}
 
-		if limit, err = strconv.Atoi(LimitParam); err != nil {
+		limit, err = strconv.Atoi(LimitParam)
+		if err != nil {
 			Error.CheckErr(err, "HandleJobLog parse string to byte error ")
 			limit = 20
 		}
 	}
 
-	skip = 0
-	limit = 20
-	if logArr, err = GlobalLogMgr.ListLog(name, skip, limit); err != nil {
+	logArr, err := GlobalLogMgr.ListLog(name, skip, limit)
+	if err != nil {
 		Error.CheckErr(err, "获取日志信息失败")
 	}
 
-	if bytes, err = common.BuildResponse(0, "success", logArr); err != nil {
+	bytes, err := common.BuildResponse(0, "success", logArr)
+	if err != nil {
 		Error.CheckErr(err, "Build LogList Response error")
 		return
 	}
@@ -222,8 +218,6 @@ var (
 func InitApiServer() (err error) {
 
 	var (
-		listener      net.Listener
-		httpServer    *http.Server
 		staticDir     http.Dir     //静态文件目录
 		staticHandler http.Handler // 静态文件处理
 	)
@@ -244,13 +238,14 @@ func InitApiServer() (err error) {
 
 	//启动监听
 	fmt.Println(GlobalConfig.APIPort)
-	if listener, err = net.Listen("tcp", ":"+strconv.Itoa(GlobalConfig.APIPort)); err != nil {
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(GlobalConfig.APIPort))
+	if err != nil {
 		Error.CheckErr(err, "start Listener service error  ")
 		return
 	}
 
 	//创建服务器
-	httpServer = &http.Server{
+	httpServer := &http.Server{
 		ReadTimeout:  time.Duration(GlobalConfig.APIReadTimeout) * time.Millisecond,
 		WriteTimeout: time.Duration(GlobalConfig.APIWriteTimeout) * time.Millisecond,
 		Handler:      mux,

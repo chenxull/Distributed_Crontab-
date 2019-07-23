@@ -30,6 +30,7 @@ func InitLogMgr() error {
 		return err
 	}
 
+	// 单例，全局访问
 	GlobalLogMgr = &LogMgr{
 		client:        client,
 		logCollection: client.Database("cron").Collection("log"),
@@ -64,6 +65,7 @@ func (logMgr *LogMgr) ListLog(name string, skip, limit int) (logArr []*common.Jo
 	}
 	defer cursor.Close(context.TODO())
 
+	// 遍历查询结果
 	for cursor.Next(context.TODO()) {
 		jobLog := &common.JobLog{}
 
@@ -71,8 +73,8 @@ func (logMgr *LogMgr) ListLog(name string, skip, limit int) (logArr []*common.Jo
 		if err = cursor.Decode(jobLog); err != nil {
 			Error.CheckErr(err, "Decode the Log from Cursor error")
 			continue
-
 		}
+		// 将日志归总
 		logArr = append(logArr, jobLog)
 	}
 	return

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -26,31 +27,28 @@ var (
 
 //InitRegister 初始化服务注册
 func InitRegister() (err error) {
-	var (
-		config  clientv3.Config
-		client  *clientv3.Client
-		kv      clientv3.KV
-		lease   clientv3.Lease
-		localIP string
-	)
+
 	//配置
-	config = clientv3.Config{
+	config := clientv3.Config{
 		Endpoints:   GlobalConfig.EtcdEndpoints,
 		DialTimeout: time.Duration(GlobalConfig.EtcdDialTimeout) * time.Millisecond,
 	}
 
 	//建立连接
-	if client, err = clientv3.New(config); err != nil {
+	client, err := clientv3.New(config)
+	if err != nil {
 		Error.CheckErr(err, "Etcd New client error ")
 		return
 	}
 
 	//得到 kv 和 lease 的API子集
-	kv = clientv3.KV(client)
-	lease = clientv3.Lease(client)
+	kv := clientv3.KV(client)
+	lease := clientv3.Lease(client)
 
 	//本机地址
-	if localIP, err = getLocalIP(); err != nil {
+	localIP, err := getLocalIP()
+	fmt.Println(localIP)
+	if err != nil {
 		return
 	}
 	//配置 单例
@@ -70,22 +68,17 @@ func InitRegister() (err error) {
 
 func getLocalIP() (ipv4 string, err error) {
 
-	var (
-		addrs   []net.Addr
-		addr    net.Addr
-		ipNet   *net.IPNet
-		isIPNet bool
-	)
-
 	//获取所有IP地址
-	if addrs, err = net.InterfaceAddrs(); err != nil {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
 		return
 	}
 
 	//取第一个非 lo 的网卡IP
-	for _, addr = range addrs {
+	for _, addr := range addrs {
 		//这个网络地址是 ipv4 或ipv6
-		if ipNet, isIPNet = addr.(*net.IPNet); isIPNet && !ipNet.IP.IsLoopback() {
+		ipNet, isIPNet := addr.(*net.IPNet)
+		if isIPNet && !ipNet.IP.IsLoopback() {
 			//跳过IP v6
 			if ipNet.IP.To4() != nil {
 				ipv4 = ipNet.IP.String()
@@ -100,12 +93,11 @@ func getLocalIP() (ipv4 string, err error) {
 
 func (register *Register) keepOnline() {
 	var (
-		regkey     string
 		cancelCtx  context.Context
 		cancelFunc context.CancelFunc
 	)
 
-	regkey = common.JOB_WORKER_DIR + register.localIP
+	regkey := common.JOB_WORKER_DIR + register.localIP
 
 	for {
 
@@ -131,6 +123,7 @@ func (register *Register) keepOnline() {
 		for {
 			select {
 			case keepAliveResp := <-keepAliveChan:
+				// 如果没有在活跃状态，取消 worker 节点 IP 的注册
 				if keepAliveResp == nil {
 					goto RETRY
 				}

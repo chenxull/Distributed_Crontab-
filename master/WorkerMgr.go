@@ -23,28 +23,24 @@ var (
 //InitWorkerMgr 初始化方法
 func InitWorkerMgr() (err error) {
 
-	var (
-		config clientv3.Config
-		client *clientv3.Client
-		kv     clientv3.KV
-		lease  clientv3.Lease
-	)
 	//配置
-	config = clientv3.Config{
+	config := clientv3.Config{
 		Endpoints:   GlobalConfig.EtcdEndpoints,
 		DialTimeout: time.Duration(GlobalConfig.EtcdDialTimeout) * time.Millisecond,
 	}
 
 	//建立连接
-	if client, err = clientv3.New(config); err != nil {
+	client, err := clientv3.New(config)
+	if err != nil {
 		Error.CheckErr(err, "Etcd New client error ")
 		return
 	}
 
 	//得到 kv 和 lease 的api 子集
-	kv = clientv3.NewKV(client)
-	lease = clientv3.NewLease(client)
+	kv := clientv3.NewKV(client)
+	lease := clientv3.NewLease(client)
 
+	// 全局单例,可全局访问
 	GlobalWorkerMgr = &WorkerMgr{
 		client: client,
 		kv:     kv,
@@ -58,6 +54,7 @@ func (workerMgr *WorkerMgr) ListWorkers() (workerArr []string, err error) {
 	//初始化 shuju
 	workerArr = make([]string, 0)
 
+	// 获取 etcd 中 /cron/worker/ 目录中注册的数据
 	getResp, err := workerMgr.kv.Get(context.TODO(), common.JOB_WORKER_DIR, clientv3.WithPrefix())
 	if err != nil {
 		Error.CheckErr(err, "ListWorkers get the info error")
